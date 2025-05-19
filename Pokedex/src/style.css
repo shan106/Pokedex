@@ -407,5 +407,22 @@ th {
   color: #ffe066;
   margin: 0 2px;
 }
+.caught-table {
+  width: 100%;
+  margin: 0 auto 2rem auto;
+  border-collapse: collapse;
+  background: transparent;
+}
+.caught-table th, .caught-table td {
+  padding: 12px 8px;
+  text-align: center;
+  border-bottom: 1px solid #333;
+}
+.caught-table th {
+  font-size: 1.1em;
+  font-weight: 600;
+}
+.catch-success { color: #6fcf97 !important;}
+.catch-fail { color: #f55 !important;}
 
 

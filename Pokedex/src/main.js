@@ -6,11 +6,11 @@ let currentPokemons = [];
 let sortAscending = true;
 let allPokemons = [];
 let favoriteNames = loadFavorites();
-let currentTab = "all"; // 'all' of 'favorites'
+let currentTab = "all"; // 'all' of 'favorites' of 'catch'
 let allTypes = [];
 let selectedType = "all";
+let caughtPokemons = loadCaughtPokemons();
 
-// --- FAVORIETEN OPSLAG ---
 function saveFavorites() {
     localStorage.setItem('favoritePokemons', JSON.stringify(favoriteNames));
 }
@@ -29,86 +29,43 @@ function toggleFavorite(pokemonName) {
     }
     saveFavorites();
 }
-
-// --- UI: Tabs ---
-function showTabs(onTabChange) {
-    let tabDiv = document.getElementById('tab-bar');
-    if (!tabDiv) {
-        tabDiv = document.createElement('div');
-        tabDiv.id = 'tab-bar';
-        tabDiv.style.display = 'flex';
-        tabDiv.style.justifyContent = 'center';
-        tabDiv.style.gap = '20px';
-        tabDiv.style.marginBottom = '24px';
-        tabDiv.innerHTML = `
-            <button id="tab-all" class="tab-btn tab-active">Alle Pokémon</button>
-            <button id="tab-fav" class="tab-btn">Favorieten ⭐️</button>
-        `;
-        document.querySelector('#app').prepend(tabDiv);
+function saveCaughtPokemons() {
+    localStorage.setItem('caughtPokemons', JSON.stringify(caughtPokemons));
+}
+function loadCaughtPokemons() {
+    const cp = localStorage.getItem('caughtPokemons');
+    return cp ? JSON.parse(cp) : {};
+}
+function catchRandomPokemon() {
+    if (Math.random() > 0.7) return null;
+    if (allPokemons.length === 0) return null;
+    const i = Math.floor(Math.random() * allPokemons.length);
+    return allPokemons[i];
+}
+function addCaught(pokemon) {
+    if (!pokemon) return;
+    if (!caughtPokemons[pokemon.name]) {
+        caughtPokemons[pokemon.name] = {
+            name: pokemon.name,
+            sprite: pokemon.sprite,
+            count: 1
+        };
+    } else {
+        caughtPokemons[pokemon.name].count++;
     }
-    document.getElementById('tab-all').onclick = () => onTabChange('all');
-    document.getElementById('tab-fav').onclick = () => onTabChange('favorites');
-    updateTabStyles();
+    saveCaughtPokemons();
 }
-function updateTabStyles() {
-    document.getElementById('tab-all').classList.toggle('tab-active', currentTab === 'all');
-    document.getElementById('tab-fav').classList.toggle('tab-active', currentTab === 'favorites');
+function getCaughtArray() {
+    return Object.values(caughtPokemons).sort((a, b) => a.name.localeCompare(b.name));
 }
-
-// --- UI: Type Filter ---
 async function getStandardTypes() {
     const response = await fetch("https://pokeapi.co/api/v2/type");
     const data = await response.json();
-    // Shadow en unknown overslaan:
     const exclude = ["shadow", "unknown"];
     return data.results
         .map(t => t.name)
         .filter(t => !exclude.includes(t));
 }
-function showTypeFilter(types, onFilter) {
-    let filterDiv = document.getElementById('type-filter-bar');
-    if (!filterDiv) {
-        filterDiv = document.createElement('div');
-        filterDiv.id = 'type-filter-bar';
-        filterDiv.style.display = 'flex';
-        filterDiv.style.justifyContent = 'center';
-        filterDiv.style.marginBottom = '20px';
-        filterDiv.innerHTML = `
-            <select id="type-filter" style="padding: 8px 16px; border-radius: 8px; font-size: 1em;">
-                <option value="all">All types</option>
-                ${types.map(t => `<option value="${t}">${t.charAt(0).toUpperCase() + t.slice(1)}</option>`).join("")}
-            </select>
-        `;
-        const app = document.getElementById('app');
-        app.insertBefore(filterDiv, app.children[1] || null);
-    }
-    document.getElementById('type-filter').onchange = function () {
-        onFilter(this.value);
-    };
-}
-
-// --- UI: Zoekbalk ---
-function ensureSearchBar(onSearch) {
-    const app = document.querySelector('#app');
-    let searchDiv = document.getElementById('search-bar');
-    if (!searchDiv) {
-        searchDiv = document.createElement('div');
-        searchDiv.id = 'search-bar';
-        searchDiv.innerHTML = `
-            <input type="text" id="search-input" placeholder="Zoek een Pokémon...">
-        `;
-        app.insertBefore(searchDiv, app.children[2] || null);
-    }
-    let input = document.getElementById('search-input');
-    if (!input._hasListener) {
-        input.addEventListener('input', e => {
-            onSearch(e.target.value.trim().toLowerCase());
-        });
-        input._hasListener = true;
-    }
-}
-
-// --- Data ophalen ---
 async function getBasisPokemon(maxPokemons = 10) {
     const response = await fetch(API_URL);
     const data = await response.json();
@@ -137,7 +94,6 @@ async function getBasisPokemon(maxPokemons = 10) {
     }
     return basisPokemons;
 }
-
 async function getEvolutions(evolutionChainUrl) {
     const response = await fetch(evolutionChainUrl);
     const data = await response.json();
@@ -171,12 +127,71 @@ async function getEvolutions(evolutionChainUrl) {
     return evolutionsWithSprites;
 }
 
-function showTable(pokemons) {
+// ===== UI =====
+function renderUI() {
     const app = document.querySelector('#app');
-    let oldTable = app.querySelector('table');
-    if (oldTable) oldTable.remove();
-
-    const table = document.createElement("table");
+    app.innerHTML = `
+        <div id="tabs-container"></div>
+        <div id="filter-and-search"></div>
+        <div id="main-content"></div>
+    `;
+    showTabs(tab => {
+        currentTab = tab;
+        renderUI(); // Alles opnieuw, nu met deze tab actief
+    });
+    if (currentTab === 'catch') {
+        document.getElementById('filter-and-search').innerHTML = '';
+        showCatchTab();
+    } else {
+        showTypeFilter(allTypes, (type) => {
+            selectedType = type;
+            filterAndShow();
+        });
+        ensureSearchBar(() => {
+            filterAndShow();
+        });
+        filterAndShow();
+    }
+}
+function showTabs(onTabChange) {
+    const tabs = `
+        <button id="tab-all" class="tab-btn${currentTab === 'all' ? ' tab-active' : ''}">Alle Pokémon</button>
+        <button id="tab-fav" class="tab-btn${currentTab === 'favorites' ? ' tab-active' : ''}">Favorieten ⭐️</button>
+        <button id="tab-catch" class="tab-btn${currentTab === 'catch' ? ' tab-active' : ''}">Vangen 🎯</button>
+    `;
+    document.getElementById('tabs-container').innerHTML = tabs;
+    document.getElementById('tab-all').onclick = () => onTabChange('all');
+    document.getElementById('tab-fav').onclick = () => onTabChange('favorites');
+    document.getElementById('tab-catch').onclick = () => onTabChange('catch');
+}
+function showTypeFilter(types, onFilter) {
+    document.getElementById('filter-and-search').innerHTML = `
+        <div id="type-filter-bar" style="display:flex;justify-content:center;margin-bottom:16px;">
+            <select id="type-filter" style="padding:8px 16px;border-radius:8px;font-size:1em;">
+                <option value="all">All types</option>
+                ${types.map(t => `<option value="${t}">${t.charAt(0).toUpperCase() + t.slice(1)}</option>`).join("")}
+            </select>
+        </div>
+        <div id="search-bar" style="width:100%;margin-bottom:24px;display:flex;justify-content:center;">
+            <input type="text" id="search-input" placeholder="Zoek een Pokémon..." style="padding:8px 12px;font-size:1em;border-radius:8px;border:1px solid #333;width:270px;background:#242424;color:#fff;">
+        </div>
+    `;
+    document.getElementById('type-filter').onchange = function () {
+        onFilter(this.value);
+    };
+}
+function ensureSearchBar(onSearch) {
+    let input = document.getElementById('search-input');
+    if (!input._hasListener) {
+        input.addEventListener('input', e => {
+            onSearch(e.target.value.trim().toLowerCase());
+        });
+        input._hasListener = true;
+    }
+}
+function showTable(pokemons) {
+    const main = document.getElementById('main-content');
+    let table = document.createElement("table");
     table.innerHTML = `
         <tr>
             <th>⭐️</th>
@@ -189,7 +204,6 @@ function showTable(pokemons) {
             <th>Meer info</th>
         </tr>
     `;
-
     pokemons.forEach((pokemon, index) => {
         const isFav = isFavorite(pokemon.name);
         const star = isFav ? "⭐️" : "☆";
@@ -215,20 +229,17 @@ function showTable(pokemons) {
         `;
         table.appendChild(row);
     });
+    main.innerHTML = '';
+    main.appendChild(table);
 
-    app.appendChild(table);
-
-    // Favorieten
     document.querySelectorAll('.fav-btn').forEach(btn => {
         btn.onclick = function (e) {
             e.stopPropagation();
             const name = this.getAttribute('data-name');
             toggleFavorite(name);
-            refreshCurrentTab();
+            renderUI();
         };
     });
-
-    // Sorteren
     document.getElementById('sort-name').onclick = function () {
         sortAscending = !sortAscending;
         showTable(
@@ -239,8 +250,6 @@ function showTable(pokemons) {
             )
         );
     };
-
-    // Evoluties
     document.querySelectorAll('.show-evolutions').forEach(btn => {
         btn.addEventListener('click', async function () {
             document.querySelectorAll('.evo-row').forEach(e => e.remove());
@@ -275,7 +284,6 @@ function showTable(pokemons) {
             evoCell.innerHTML = evoHtml;
             evoRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-            // Event listeners voor "Meer info" bij evoluties
             document.querySelectorAll('.info-btn-evo').forEach(btn => {
                 btn.onclick = async function (e) {
                     e.stopPropagation();
@@ -286,7 +294,6 @@ function showTable(pokemons) {
         });
     });
 
-    // POP-UP voor meer info
     document.querySelectorAll('.info-btn').forEach(btn => {
         btn.onclick = async function (e) {
             e.stopPropagation();
@@ -295,8 +302,56 @@ function showTable(pokemons) {
         };
     });
 }
+function showCatchTab() {
+    const main = document.getElementById('main-content');
+    main.innerHTML = '';
+    let div = document.createElement('div');
+    div.style.textAlign = 'center';
+    div.innerHTML = `
+        <h2 style="color:#ffe066;">Pokémon vangen</h2>
+        <button id="catch-btn" style="padding:0.8em 2em; border-radius:1em; background:#313; color:#ffe066; border:none; font-size:1.2em; font-weight:600; cursor:pointer;">Vang een Pokémon!</button>
+        <div id="catch-message" style="margin:16px 0; font-size:1.1em; font-weight:500;"></div>
+        <h3 style="margin-top:36px;">Gevangen Pokémon</h3>
+        <div id="caught-table-container"></div>
+    `;
+    main.appendChild(div);
 
-// ------- POP-UP FUNCTION -------
+    document.getElementById('catch-btn').onclick = function () {
+        let caught = catchRandomPokemon();
+        let msgDiv = document.getElementById('catch-message');
+        if (!caught) {
+            msgDiv.innerHTML = `<span style="color:#f55;">Helaas, de Pokémon is ontsnapt!</span>`;
+            msgDiv.classList.remove('catch-success');
+            msgDiv.classList.add('catch-fail');
+        } else {
+            addCaught(caught);
+            msgDiv.innerHTML = `<span style="color:#6fcf97;">Gefeliciteerd! Je hebt <b>${caught.name.charAt(0).toUpperCase() + caught.name.slice(1)}</b> gevangen!</span>`;
+            msgDiv.classList.remove('catch-fail');
+            msgDiv.classList.add('catch-success');
+            renderCaughtTable();
+        }
+    };
+    renderCaughtTable();
+}
+function renderCaughtTable() {
+    let c = getCaughtArray();
+    let html = '';
+    if (c.length === 0) {
+        html = `<p style="color:#888;">Nog geen Pokémon gevangen...</p>`;
+    } else {
+        html = `<table class="caught-table"><tr>
+            <th>Foto</th><th>Naam</th><th>Aantal gevangen</th></tr>`;
+        c.forEach(p => {
+            html += `<tr>
+                <td><img src="${p.sprite}" alt="${p.name}" width="60"></td>
+                <td>${p.name.charAt(0).toUpperCase() + p.name.slice(1)}</td>
+                <td>${p.count}</td>
+            </tr>`;
+        });
+        html += `</table>`;
+    }
+    document.getElementById('caught-table-container').innerHTML = html;
+}
 async function showPokemonPopup(pokemonName) {
     const dataUrl = `https://pokeapi.co/api/v2/pokemon/${pokemonName}`;
     const resp = await fetch(dataUrl);
@@ -330,19 +385,13 @@ async function showPokemonPopup(pokemonName) {
     popup.querySelector('.popup-close-btn').onclick = () => popup.remove();
     popup.onclick = (e) => { if (e.target === popup) popup.remove(); };
 }
-
-// --- Filter logica (tabs, zoeken, type-filter) ---
 function filterAndShow() {
     let base = currentTab === 'favorites'
         ? allPokemons.filter(p => isFavorite(p.name))
         : allPokemons;
-
-    // Type-filter
     let filtered = (selectedType === "all")
         ? base
         : base.filter(p => p.types.includes(selectedType));
-
-    // Zoek-filter
     const searchValue = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
     if (searchValue) {
         filtered = filtered.filter(p => p.name.toLowerCase().includes(searchValue));
@@ -351,32 +400,12 @@ function filterAndShow() {
     showTable(filtered);
 }
 
-function refreshCurrentTab() {
-    updateTabStyles();
-    filterAndShow();
-}
-
-// --- INIT ---
+// =========== INIT ===========
 getStandardTypes().then(types => {
     allTypes = types;
-    showTypeFilter(allTypes, (type) => {
-        selectedType = type;
-        filterAndShow();
-    });
-
     getBasisPokemon(10).then(basisPokemons => {
         allPokemons = basisPokemons;
         currentPokemons = basisPokemons;
-
-        showTabs(tab => {
-            currentTab = tab;
-            filterAndShow();
-        });
-
-        ensureSearchBar(() => {
-            filterAndShow();
-        });
-
-        filterAndShow();
+        renderUI();
     });
 });
