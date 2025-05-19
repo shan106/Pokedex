@@ -173,3 +173,22 @@ th {
   }
 }
 
+#search-bar {
+  width: 100%;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: center;
+}
+#search-bar input[type="text"] {
+  padding: 8px 12px;
+  font-size: 1em;
+  border-radius: 8px;
+  border: 1px solid #333;
+  width: 270px;
+  background: #242424;
+  color: #fff;
+}
+#search-bar input[type="text"]::placeholder {
+  color: #888;
+  opacity: 1;
+}

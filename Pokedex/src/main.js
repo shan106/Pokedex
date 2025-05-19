@@ -2,6 +2,33 @@ import './style.css';
 
 const API_URL = "https://pokeapi.co/api/v2/pokedex/1/";
 
+let currentPokemons = [];
+let sortAscending = true;
+let allPokemons = [];
+
+// Maak de zoekbalk altijd bovenaan in #app
+function ensureSearchBar(onSearch) {
+    const app = document.querySelector('#app');
+    let searchDiv = document.getElementById('search-bar');
+    if (!searchDiv) {
+        searchDiv = document.createElement('div');
+        searchDiv.id = 'search-bar';
+        searchDiv.innerHTML = `
+            <input type="text" id="search-input" placeholder="Zoek een Pokémon...">
+        `;
+        app.appendChild(searchDiv); // Zoekbalk altijd bovenaan in #app
+    }
+    // Voeg één keer event toe
+    let input = document.getElementById('search-input');
+    if (!input._hasListener) {
+        input.addEventListener('input', e => {
+            const searchValue = e.target.value.trim().toLowerCase();
+            onSearch(searchValue);
+        });
+        input._hasListener = true;
+    }
+}
+
 async function getBasisPokemon(maxPokemons = 10) {
     const response = await fetch(API_URL);
     const data = await response.json();
@@ -46,10 +73,8 @@ async function getEvolutions(evolutionChainUrl) {
         }
     }
 
-    // Sla de basis-Pokémon over:
     evolutions = evolutions.slice(1);
 
-    // Haal sprites op
     const evolutionsWithSprites = [];
     for (let name of evolutions) {
         const pokemonDataUrl = `https://pokeapi.co/api/v2/pokemon/${name}`;
@@ -65,13 +90,21 @@ async function getEvolutions(evolutionChainUrl) {
     return evolutionsWithSprites;
 }
 
+// Alleen de tabel wordt opnieuw opgebouwd
 function showTable(pokemons) {
     const app = document.querySelector('#app');
+    // Verwijder oude tabel maar laat de zoekbalk staan
+    let oldTable = app.querySelector('table');
+    if (oldTable) oldTable.remove();
+
     const table = document.createElement("table");
     table.innerHTML = `
         <tr>
             <th>Foto</th>
-            <th>Naam (klikbaar)</th>
+            <th id="sort-name" style="cursor:pointer;">
+                Naam (klikbaar)
+                <span style="font-size: 0.8em;">&#8597;</span>
+            </th>
             <th>Meer info</th>
         </tr>
     `;
@@ -92,21 +125,29 @@ function showTable(pokemons) {
         table.appendChild(row);
     });
 
-    app.innerHTML = '';
     app.appendChild(table);
 
-    // Event listeners toevoegen aan naam-buttons
+    // Sorteerfunctie
+    document.getElementById('sort-name').onclick = function () {
+        sortAscending = !sortAscending;
+        showTable(
+            [...currentPokemons].sort((a, b) =>
+                sortAscending
+                    ? a.name.localeCompare(b.name)
+                    : b.name.localeCompare(a.name)
+            )
+        );
+    };
+
+    // Evoluties tonen
     document.querySelectorAll('.show-evolutions').forEach(btn => {
         btn.addEventListener('click', async function () {
-            // Eerst eventuele oude open evoluties sluiten
             document.querySelectorAll('.evo-row').forEach(e => e.remove());
-
             const idx = this.getAttribute('data-index');
             const selectedPokemon = pokemons[idx];
             const evolutions = await getEvolutions(selectedPokemon.evolution_chain_url);
 
-            // Vind de huidige rij en voeg direct erna een evolutierij toe
-            const currentRow = table.rows[parseInt(idx) + 1]; // +1 door de header
+            const currentRow = table.rows[parseInt(idx) + 1];
             const evoRow = table.insertRow(currentRow.rowIndex + 1);
             evoRow.classList.add('evo-row');
             evoRow.style.transition = "all 0.4s";
@@ -131,7 +172,6 @@ function showTable(pokemons) {
             }
 
             evoCell.innerHTML = evoHtml;
-
             evoRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
         });
     });
@@ -139,5 +179,12 @@ function showTable(pokemons) {
 
 // Start de app
 getBasisPokemon(10).then(basisPokemons => {
-    showTable(basisPokemons);
+    allPokemons = basisPokemons;
+    currentPokemons = basisPokemons;
+    ensureSearchBar((searchValue) => {
+        let filtered = allPokemons.filter(p => p.name.toLowerCase().includes(searchValue));
+        currentPokemons = filtered;
+        showTable(filtered);
+    });
+    showTable(currentPokemons);
 });
