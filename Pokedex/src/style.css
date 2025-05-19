@@ -1,16 +1,41 @@
 :root {
+  --main-color: #f08030;
+  --bg-color: #fff4e8;
+  --accent-color: #b54a18;
+  --text-dark: #222;
+  --text-light: #fff;
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+body, #app {
+  background: var(--bg-color);
+  color: var(--main-color);
+  transition: background 0.2s, color 0.2s;
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#app {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--bg-color);
+}
+
+/* ----------- TYPOGRAPHY & GENERAL ----------- */
+h1, h2, h3, h4 {
+  color: var(--main-color);
 }
 
 a {
@@ -22,93 +47,152 @@ a:hover {
   color: #535bf2;
 }
 
-body {
-  margin: 0;
+/* ----------- LOGO & THEME SELECTOR ----------- */
+#theme-logo {
+  margin-bottom: 10px;
+}
+#theme-selector-bar {
+  margin-bottom: 24px;
+  display: block;
+}
+#theme-select {
+  margin-top: 4px;
+}
+
+/* ----------- TABS ----------- */
+#tabs-container {
+  margin-bottom: 20px;
   display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.vanilla:hover {
-  filter: drop-shadow(0 0 2em #f7df1eaa);
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
+/* Tab-knoppen gestyled als mooie “tabs” */
+.tab-btn {
+  background: var(--accent-color) !important;
+  color: #fff !important;
+  border: 2px solid var(--main-color);
+  border-bottom: none;
+  border-radius: 14px 14px 0 0;
+  font-size: 1.15em;
+  font-weight: 700;
+  padding: 0.7em 2em;
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+  min-width: 145px;
+  box-shadow: 0 2px 8px #0001;
+  letter-spacing: 0.5px;
+  transition: background 0.18s, color 0.18s, border 0.18s, box-shadow 0.2s;
+  position: relative;
+  top: 8px;
+  z-index: 1;
 }
 
-/* Pokémon-tabel */
+.tab-btn.tab-active {
+  background: var(--main-color) !important;
+  color: #fff !important;
+  border-color: var(--main-color);
+  box-shadow: 0 4px 16px #0002;
+  z-index: 2;
+}
+
+.tab-btn:not(.tab-active):hover {
+  background: #ffac6a !important;
+  color: #fff !important;
+  box-shadow: 0 2px 12px #0002;
+}
+
+@media (max-width: 700px) {
+  .tab-btn {
+    font-size: 1em;
+    min-width: 110px;
+    padding: 0.45em 1em;
+  }
+  #tabs-container {
+    gap: 8px;
+  }
+}
+
+
+/* ----------- FILTERS & ZOEKEN ----------- */
+#filter-and-search {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 22px;
+}
+#type-filter-bar, #search-bar {
+  width: 100%;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: center;
+}
+
+/* Verbeterde dropdown: pijl netjes aan de rechterkant */
+#theme-select, #type-filter {
+  padding: 0.65em 2.2em 0.65em 2.2em;
+  border-radius: 14px;
+  font-size: 1.13em;
+  border: 2px solid var(--main-color);
+  background: #fff;
+  color: var(--main-color);
+  font-weight: 700;
+  margin-bottom: 10px;
+  outline: none;
+  box-shadow: 0 1px 8px #0001;
+  cursor: pointer;
+  appearance: none;
+  text-align: center;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 140 140' width='18' height='18' fill='%23f08030' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M70 105c-2.6 0-5.2-1-7.1-2.9L17.9 57.1c-3.9-3.9-3.9-10.2 0-14.1 3.9-3.9 10.2-3.9 14.1 0L70 80.1l37.9-37.1c3.9-3.9 10.2-3.9 14.1 0 3.9 3.9 3.9 10.2 0 14.1L77.1 102.1C75.2 104 72.6 105 70 105z'/%3E%3C/svg%3E");
+  background-position: right 0.8em center;
+  background-repeat: no-repeat;
+  background-size: 1.2em;
+  padding-right: 2.7em;
+  min-width: 160px;
+}
+
+#theme-select:focus, #type-filter:focus {
+  border-color: var(--accent-color);
+}
+
+/* Zoekbalk mooi wit en modern */
+#search-bar input[type="text"], #search-input {
+  padding: 12px 22px;
+  font-size: 1.18em;
+  border-radius: 14px;
+  border: 2px solid var(--main-color);
+  width: 350px;
+  background: #fff;
+  color: var(--main-color);
+  font-weight: 500;
+  box-shadow: 0 2px 10px #0001;
+  outline: none;
+  transition: border 0.18s, color 0.18s;
+}
+#search-bar input[type="text"]:focus, #search-input:focus {
+  border-color: var(--accent-color);
+}
+#search-bar input[type="text"]::placeholder, #search-input::placeholder {
+  color: #aaa;
+  opacity: 1;
+}
+
+
+/* ----------- TABEL & CEL STYLES ----------- */
 table {
   width: 100%;
   border-collapse: collapse;
   margin: 0 auto 2rem auto;
   background: transparent;
 }
-
 th, td {
   padding: 12px 8px;
   text-align: center;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid #d3c7b8;
+  color: var(--main-color);
+  background: transparent;
 }
-
 th {
   font-size: 1.2em;
   font-weight: 600;
@@ -118,7 +202,7 @@ th {
 .show-evolutions {
   background: none;
   border: none;
-  color: #234dd7;
+  color: var(--accent-color);
   cursor: pointer;
   text-decoration: underline;
   font-size: 1em;
@@ -127,177 +211,22 @@ th {
   padding: 0;
 }
 .show-evolutions:hover {
-  color: #646cff;
+  color: var(--main-color);
 }
 
-/* Evolutie-rij */
-.evo-row {
-  transition: all 0.4s;
-  background: transparent !important;
-}
-.evo-row td {
-  padding-top: 16px;
-  padding-bottom: 16px;
-}
-
-/* Evolutie-lijn onder elkaar */
-.evolution-list {
-  margin-top: 10px;
-}
-.evolution-list-item {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  margin-bottom: 15px;
-  justify-content: center;
-}
-.evolution-list-item img {
-  background: #fff;
-  border-radius: 8px;
-  width: 60px;
-}
-.evolution-list-item span {
-  min-width: 100px;
-  font-size: 18px;
-}
-
-/* Responsive */
-@media (max-width: 700px) {
-  th, td {
-    padding: 8px 2px;
-    font-size: 0.95em;
-  }
-  .evolution-list-item span {
-    font-size: 1em;
-    min-width: 50px;
-  }
-}
-
-#search-bar {
-  width: 100%;
-  margin-bottom: 24px;
-  display: flex;
-  justify-content: center;
-}
-#search-bar input[type="text"] {
-  padding: 8px 12px;
-  font-size: 1em;
-  border-radius: 8px;
-  border: 1px solid #333;
-  width: 270px;
-  background: #242424;
-  color: #fff;
-}
-#search-bar input[type="text"]::placeholder {
-  color: #888;
-  opacity: 1;
-}
-#tab-bar {
-  margin-bottom: 24px;
-}
-.tab-btn {
-  padding: 0.7em 2em;
-  font-size: 1em;
-  border-radius: 8px 8px 0 0;
-  border: none;
-  background: #232323;
-  color: #fff;
+/* Type Pills */
+.type-pill {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 16px;
+  font-size: 0.95em;
+  background: var(--main-color) !important;
+  color: #fff !important;
   font-weight: 600;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: background 0.2s, border-bottom 0.2s;
-}
-.tab-btn.tab-active {
-  background: #333;
-  color: #ffe066;
-  border-bottom: 2px solid #ffe066;
-}
-.tab-btn:not(.tab-active):hover {
-  background: #353535;
-}
-.fav-btn {
-  font-size: 1.2em !important;
+  margin: 0 2px;
 }
 
-#tab-bar {
-  margin-bottom: 24px;
-}
-.tab-btn {
-  padding: 0.7em 2em;
-  font-size: 1em;
-  border-radius: 8px 8px 0 0;
-  border: none;
-  background: #232323;
-  color: #fff;
-  font-weight: 600;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: background 0.2s, border-bottom 0.2s;
-}
-.tab-btn.tab-active {
-  background: #333;
-  color: #ffe066;
-  border-bottom: 2px solid #ffe066;
-}
-.tab-btn:not(.tab-active):hover {
-  background: #353535;
-}
-.fav-btn {
-  font-size: 1.2em !important;
-}
-#search-bar {
-  width: 100%;
-  margin-bottom: 24px;
-  display: flex;
-  justify-content: center;
-}
-#search-bar input[type="text"] {
-  padding: 8px 12px;
-  font-size: 1em;
-  border-radius: 8px;
-  border: 1px solid #333;
-  width: 270px;
-  background: #242424;
-  color: #fff;
-}
-#search-bar input[type="text"]::placeholder {
-  color: #888;
-  opacity: 1;
-}
-
-/* Pokémon-tabel */
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 0 auto 2rem auto;
-  background: transparent;
-}
-
-th, td {
-  padding: 12px 8px;
-  text-align: center;
-  border-bottom: 1px solid #333;
-}
-
-th {
-  font-size: 1.2em;
-  font-weight: 600;
-}
-
-.show-evolutions {
-  background: none;
-  border: none;
-  color: #234dd7;
-  cursor: pointer;
-  text-decoration: underline;
-  font-size: 1em;
-  font-family: inherit;
-  transition: color 0.2s;
-  padding: 0;
-}
-.show-evolutions:hover {
-  color: #646cff;
-}
+/* Evolutie-rijen */
 .evo-row {
   transition: all 0.4s;
   background: transparent !important;
@@ -325,23 +254,13 @@ th {
   min-width: 100px;
   font-size: 18px;
 }
-@media (max-width: 700px) {
-  th, td {
-    padding: 8px 2px;
-    font-size: 0.95em;
-  }
-  .evolution-list-item span {
-    font-size: 1em;
-    min-width: 50px;
-  }
-}
 
-/* Popup */
+/* ----------- POPUP ----------- */
 .pokemon-popup-overlay {
   position: fixed;
   z-index: 9999;
   top: 0; left: 0; width: 100vw; height: 100vh;
-  background: rgba(0,0,0,0.65);
+  background: rgba(0,0,0,0.28);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -351,11 +270,11 @@ th {
   from { opacity: 0; } to { opacity: 1; }
 }
 .pokemon-popup {
-  background: #222;
-  color: #fff;
+  background: #fff;
+  color: var(--main-color);
   padding: 36px 30px 22px 30px;
-  border-radius: 14px;
-  box-shadow: 0 8px 32px #000a;
+  border-radius: 18px;
+  box-shadow: 0 8px 40px #0003;
   min-width: 270px;
   max-width: 90vw;
   min-height: 300px;
@@ -366,47 +285,40 @@ th {
   margin-top: 0;
   margin-bottom: 12px;
   font-size: 2em;
-  color: #ffe066;
+  color: var(--main-color);
 }
 .popup-close-btn {
   position: absolute;
-  top: 10px;
-  right: 14px;
+  top: 0;
+  right: 0;
+  transform: translate(25%, -25%);
   font-size: 2em;
-  background: none;
-  border: none;
+  background: var(--main-color);
+  border: 2.5px solid var(--accent-color);
   color: #fff;
   cursor: pointer;
-  opacity: 0.8;
-  transition: opacity 0.2s;
+  opacity: 0.95;
+  border-radius: 0 16px 0 16px;
+  width: 56px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, opacity 0.2s;
+  box-shadow: 0 1px 8px #0002;
+  z-index: 10;
 }
 .popup-close-btn:hover {
+  background: var(--accent-color);
+  color: #fff;
   opacity: 1;
-  color: #ffe066;
-}
-.pokemon-popup strong {
-  color: #ffe066;
 }
 
-#type-filter-bar {
-  width: 100%;
-  margin-bottom: 16px;
-  display: flex;
-  justify-content: center;
+.pokemon-popup strong {
+  color: var(--main-color);
 }
-#type-filter {
-  min-width: 140px;
-  font-weight: 500;
-}
-.type-pill {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 16px;
-  font-size: 0.9em;
-  background: #444;
-  color: #ffe066;
-  margin: 0 2px;
-}
+
+/* ----------- VANGTABEL ----------- */
 .caught-table {
   width: 100%;
   margin: 0 auto 2rem auto;
@@ -416,13 +328,112 @@ th {
 .caught-table th, .caught-table td {
   padding: 12px 8px;
   text-align: center;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid #d3c7b8;
+  color: var(--main-color);
+  background: transparent;
 }
 .caught-table th {
   font-size: 1.1em;
   font-weight: 600;
 }
+
+/* ----------- MELDINGEN ----------- */
 .catch-success { color: #6fcf97 !important;}
 .catch-fail { color: #f55 !important;}
 
+/* ----------- RESPONSIVE ----------- */
+@media (max-width: 700px) {
+  #app {
+    padding: 1rem 0.2rem;
+  }
+  table {
+    font-size: 0.94em;
+  }
+  .evolution-list-item span {
+    font-size: 1em;
+    min-width: 50px;
+  }
+  th, td {
+    padding: 8px 2px;
+    font-size: 0.95em;
+  }
+}
+/* Grote ronde knoppen in de tabel */
+button.fav-btn, .info-btn, .info-btn-evo, .show-evolutions {
+  display: inline-block;
+  background: var(--main-color) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 1.6em !important;
+  font-size: 1.08em;
+  font-weight: 600;
+  padding: 0.7em 2em !important;
+  margin: 0 4px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px #0001;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  text-decoration: none;
+}
 
+button.fav-btn {
+  font-size: 1.25em;
+  padding: 0.5em 2.2em !important;
+}
+
+button.fav-btn:active,
+.info-btn:active,
+.info-btn-evo:active,
+.show-evolutions:active {
+  background: var(--accent-color) !important;
+}
+
+button.fav-btn:hover,
+.info-btn:hover,
+.info-btn-evo:hover,
+.show-evolutions:hover {
+  background: var(--accent-color) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 12px #0002;
+}
+
+/* Als je wilt dat de klikbare naam een knop wordt, geef hem een class: .show-evolutions */
+.show-evolutions {
+  background: var(--main-color) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 1.6em !important;
+  padding: 0.7em 2em !important;
+  font-size: 1.08em;
+  font-weight: 600;
+  cursor: pointer;
+  margin: 0 4px;
+  box-shadow: 0 2px 8px #0001;
+  text-decoration: underline;
+}
+
+/* Als je liever geen underline, dan: */
+.show-evolutions {
+  text-decoration: none;
+}
+
+/* Pills (voor types) blijven wat kleiner */
+.type-pill {
+  padding: 4px 15px;
+  font-size: 1em;
+  border-radius: 2em;
+  background: var(--main-color) !important;
+  color: #fff !important;
+  font-weight: 600;
+}
+
+/* Responsief */
+@media (max-width: 700px) {
+  button.fav-btn, .info-btn, .info-btn-evo, .show-evolutions {
+    padding: 0.55em 1.2em !important;
+    font-size: 0.98em;
+  }
+  .type-pill {
+    padding: 3px 10px;
+    font-size: 0.95em;
+  }
+}

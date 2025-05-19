@@ -1,12 +1,89 @@
 import './style.css';
 
+// ==== THEMA DATA ====
+const THEME_DATA = {
+    charmander: {
+        name: "Charmander",
+        color: "#f08030",
+        bg: "#fff4e8",
+        accent: "#b54a18",
+        logo: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/4.png"
+    },
+    bulbasaur: {
+        name: "Bulbasaur",
+        color: "#78c850",
+        bg: "#e6fbe8",
+        accent: "#436732",
+        logo: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png"
+    },
+    squirtle: {
+        name: "Squirtle",
+        color: "#6890f0",
+        bg: "#e8f0ff",
+        accent: "#355682",
+        logo: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/7.png"
+    }
+};
+let currentTheme = loadTheme();
+
+function saveTheme(themeKey) {
+    localStorage.setItem('pokemonTheme', themeKey);
+}
+function loadTheme() {
+    return localStorage.getItem('pokemonTheme') || "charmander";
+}
+function applyTheme(themeKey) {
+    const theme = THEME_DATA[themeKey];
+    document.documentElement.style.setProperty('--main-color', theme.color);
+    document.documentElement.style.setProperty('--bg-color', theme.bg);
+    document.documentElement.style.setProperty('--accent-color', theme.accent);
+    // Logo
+    let logoDiv = document.getElementById('theme-logo');
+    if (!logoDiv) {
+        logoDiv = document.createElement('div');
+        logoDiv.id = "theme-logo";
+        logoDiv.style.display = "flex";
+        logoDiv.style.justifyContent = "center";
+        logoDiv.style.margin = "0 auto 16px auto";
+        const app = document.getElementById('app');
+        app.prepend(logoDiv);
+    }
+    logoDiv.innerHTML = `<img src="${theme.logo}" alt="${theme.name}" style="width:76px;height:76px;background:#fff;border-radius:50%;box-shadow:0 2px 10px #0002;">`;
+}
+function showThemeSelector() {
+    let selector = document.getElementById('theme-selector-bar');
+    if (!selector) {
+        selector = document.createElement('div');
+        selector.id = "theme-selector-bar";
+        selector.style.display = "flex";
+        selector.style.justifyContent = "center";
+        selector.style.marginBottom = "12px";
+        selector.innerHTML = `
+            <select id="theme-select" style="font-size:1.1em;padding:0.5em 2em;border-radius:1em;border:1px solid var(--main-color);background:#fff;">
+                <option value="charmander">Charmander</option>
+                <option value="bulbasaur">Bulbasaur</option>
+                <option value="squirtle">Squirtle</option>
+            </select>
+        `;
+        const app = document.getElementById('app');
+        app.insertBefore(selector, app.firstChild.nextSibling); // na het logo
+    }
+    document.getElementById('theme-select').value = currentTheme;
+    document.getElementById('theme-select').onchange = function () {
+        currentTheme = this.value;
+        saveTheme(currentTheme);
+        applyTheme(currentTheme);
+    };
+}
+
+// ==== APP LOGICA ====
 const API_URL = "https://pokeapi.co/api/v2/pokedex/1/";
 
 let currentPokemons = [];
 let sortAscending = true;
 let allPokemons = [];
 let favoriteNames = loadFavorites();
-let currentTab = "all"; // 'all' of 'favorites' of 'catch'
+let currentTab = "all";
 let allTypes = [];
 let selectedType = "all";
 let caughtPokemons = loadCaughtPokemons();
@@ -135,6 +212,9 @@ function renderUI() {
         <div id="filter-and-search"></div>
         <div id="main-content"></div>
     `;
+    applyTheme(currentTheme);
+    showThemeSelector();
+
     showTabs(tab => {
         currentTab = tab;
         renderUI(); // Alles opnieuw, nu met deze tab actief
@@ -308,8 +388,8 @@ function showCatchTab() {
     let div = document.createElement('div');
     div.style.textAlign = 'center';
     div.innerHTML = `
-        <h2 style="color:#ffe066;">Pokémon vangen</h2>
-        <button id="catch-btn" style="padding:0.8em 2em; border-radius:1em; background:#313; color:#ffe066; border:none; font-size:1.2em; font-weight:600; cursor:pointer;">Vang een Pokémon!</button>
+        <h2 style="color:var(--main-color);">Pokémon vangen</h2>
+        <button id="catch-btn" style="padding:0.8em 2em; border-radius:1em; background:var(--main-color); color:#fff; border:none; font-size:1.2em; font-weight:600; cursor:pointer;">Vang een Pokémon!</button>
         <div id="catch-message" style="margin:16px 0; font-size:1.1em; font-weight:500;"></div>
         <h3 style="margin-top:36px;">Gevangen Pokémon</h3>
         <div id="caught-table-container"></div>
