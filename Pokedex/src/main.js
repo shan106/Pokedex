@@ -172,7 +172,7 @@ function showTable(pokemons) {
                 </button>
             </td>
             <td>
-                <a href="${pokemon.url}" target="_blank"><button>Meer info</button></a>
+                <button class="info-btn" data-name="${pokemon.name}">Meer info</button>
             </td>
         `;
         table.appendChild(row);
@@ -186,7 +186,6 @@ function showTable(pokemons) {
             e.stopPropagation();
             const name = this.getAttribute('data-name');
             toggleFavorite(name);
-            // Herteken huidige tab
             refreshCurrentTab();
         };
     });
@@ -228,7 +227,7 @@ function showTable(pokemons) {
                         <div class="evolution-list-item">
                             <img src="${evo.sprite}" alt="${evo.name}">
                             <span>${evo.name.charAt(0).toUpperCase() + evo.name.slice(1)}</span>
-                            <a href="${evo.url}" target="_blank"><button>Meer info</button></a>
+                            <button class="info-btn-evo" data-name="${evo.name}">Meer info</button>
                         </div>
                     `;
                 });
@@ -237,10 +236,69 @@ function showTable(pokemons) {
 
             evoCell.innerHTML = evoHtml;
             evoRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // Event listeners voor "Meer info" bij evoluties
+            document.querySelectorAll('.info-btn-evo').forEach(btn => {
+                btn.onclick = async function (e) {
+                    e.stopPropagation();
+                    const name = this.getAttribute('data-name');
+                    showPokemonPopup(name);
+                };
+            });
         });
+    });
+
+    // POP-UP voor meer info
+    document.querySelectorAll('.info-btn').forEach(btn => {
+        btn.onclick = async function (e) {
+            e.stopPropagation();
+            const name = this.getAttribute('data-name');
+            showPokemonPopup(name);
+        };
     });
 }
 
+
+// ------- POP-UP FUNCTION -------
+async function showPokemonPopup(pokemonName) {
+    // Haal detaildata op van de pokemon endpoint
+    const dataUrl = `https://pokeapi.co/api/v2/pokemon/${pokemonName}`;
+    const resp = await fetch(dataUrl);
+    const data = await resp.json();
+
+    // Parse
+    const naam = data.name.charAt(0).toUpperCase() + data.name.slice(1);
+    const lengte = data.height / 10 + " m";
+    const gewicht = data.weight / 10 + " kg";
+    const types = data.types.map(t => t.type.name).join(', ');
+    const abilities = data.abilities.map(a => a.ability.name).join(', ');
+    const stats = data.stats.map(s => `${s.stat.name}: ${s.base_stat}`).join('<br>');
+
+    // Bouw popup
+    let popup = document.createElement('div');
+    popup.className = "pokemon-popup-overlay";
+    popup.innerHTML = `
+      <div class="pokemon-popup">
+        <button class="popup-close-btn" title="Sluiten">&times;</button>
+        <div class="popup-content">
+            <h2>${naam}</h2>
+            <img src="${data.sprites.front_default}" alt="${naam}" width="100" style="background:#fff;border-radius:12px;margin-bottom:15px;"/>
+            <div><strong>Lengte:</strong> ${lengte}</div>
+            <div><strong>Gewicht:</strong> ${gewicht}</div>
+            <div><strong>Type:</strong> ${types}</div>
+            <div><strong>Abilities:</strong> ${abilities}</div>
+            <div style="margin-top: 10px;"><strong>Stats:</strong><br>${stats}</div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(popup);
+
+    // Sluiten met kruisje of buiten popup klikken
+    popup.querySelector('.popup-close-btn').onclick = () => popup.remove();
+    popup.onclick = (e) => { if (e.target === popup) popup.remove(); };
+}
+
+// ----- Refreshen van tabs -----
 function refreshCurrentTab() {
     updateTabStyles();
     if (currentTab === 'all') {
