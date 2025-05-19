@@ -59,7 +59,7 @@ function showThemeSelector() {
         selector.style.justifyContent = "center";
         selector.style.marginBottom = "12px";
         selector.innerHTML = `
-            <select id="theme-select" style="font-size:1.1em;padding:0.5em 2em;border-radius:1em;border:1px solid var(--main-color);background:#fff;">
+            <select id="theme-select" style="font-size:1.1em;padding:0.5em 2em;border-radius:1em;border:1.5px solid var(--main-color);background:#fff;">
                 <option value="charmander">Charmander</option>
                 <option value="bulbasaur">Bulbasaur</option>
                 <option value="squirtle">Squirtle</option>
@@ -82,11 +82,19 @@ const API_URL = "https://pokeapi.co/api/v2/pokedex/1/";
 let currentPokemons = [];
 let sortAscending = true;
 let allPokemons = [];
+let allPokemonsLoaded = []; // om duplicaten te vermijden
 let favoriteNames = loadFavorites();
 let currentTab = "all";
 let allTypes = [];
 let selectedType = "all";
 let caughtPokemons = loadCaughtPokemons();
+let observer = null;
+
+// Infinite scroll variabelen
+let offset = 0;
+const PAGE_SIZE = 25;
+let loadingPokemons = false;
+let doneLoading = false;
 
 function saveFavorites() {
     localStorage.setItem('favoritePokemons', JSON.stringify(favoriteNames));
@@ -143,10 +151,10 @@ async function getStandardTypes() {
         .map(t => t.name)
         .filter(t => !exclude.includes(t));
 }
-async function getBasisPokemon(maxPokemons = 10) {
+async function getBasisPokemon({ offset = 0, limit = PAGE_SIZE } = {}) {
     const response = await fetch(API_URL);
     const data = await response.json();
-    const entries = data.pokemon_entries.slice(0, maxPokemons);
+    const entries = data.pokemon_entries.slice(offset, offset + limit);
 
     const basisPokemons = [];
 
@@ -160,48 +168,21 @@ async function getBasisPokemon(maxPokemons = 10) {
             const pokemonDataResponse = await fetch(pokemonDataUrl);
             const pokemonData = await pokemonDataResponse.json();
 
+            // Vermijd duplicaten
+            if (allPokemonsLoaded.includes(speciesData.name)) continue;
+            allPokemonsLoaded.push(speciesData.name);
+
             basisPokemons.push({
                 name: speciesData.name,
                 url: speciesUrl,
                 sprite: pokemonData.sprites.front_default,
                 evolution_chain_url: speciesData.evolution_chain.url,
-                types: pokemonData.types.map(t => t.type.name)
+                types: pokemonData.types.map(t => t.type.name),
+                weight: pokemonData.weight / 10 // kg
             });
         }
     }
     return basisPokemons;
-}
-async function getEvolutions(evolutionChainUrl) {
-    const response = await fetch(evolutionChainUrl);
-    const data = await response.json();
-
-    let evolutions = [];
-    let node = data.chain;
-
-    while (node) {
-        evolutions.push(node.species.name);
-        if (node.evolves_to && node.evolves_to.length > 0) {
-            node = node.evolves_to[0];
-        } else {
-            break;
-        }
-    }
-
-    evolutions = evolutions.slice(1);
-
-    const evolutionsWithSprites = [];
-    for (let name of evolutions) {
-        const pokemonDataUrl = `https://pokeapi.co/api/v2/pokemon/${name}`;
-        const pokemonDataResponse = await fetch(pokemonDataUrl);
-        const pokemonData = await pokemonDataResponse.json();
-        evolutionsWithSprites.push({
-            name,
-            sprite: pokemonData.sprites.front_default,
-            url: `https://pokeapi.co/api/v2/pokemon-species/${pokemonData.id}/`
-        });
-    }
-
-    return evolutionsWithSprites;
 }
 
 // ===== UI =====
@@ -222,6 +203,7 @@ function renderUI() {
     if (currentTab === 'catch') {
         document.getElementById('filter-and-search').innerHTML = '';
         showCatchTab();
+        disconnectObserver();
     } else {
         showTypeFilter(allTypes, (type) => {
             selectedType = type;
@@ -253,7 +235,7 @@ function showTypeFilter(types, onFilter) {
             </select>
         </div>
         <div id="search-bar" style="width:100%;margin-bottom:24px;display:flex;justify-content:center;">
-            <input type="text" id="search-input" placeholder="Zoek een Pokémon..." style="padding:8px 12px;font-size:1em;border-radius:8px;border:1px solid #333;width:270px;background:#242424;color:#fff;">
+            <input type="text" id="search-input" placeholder="Zoek een Pokémon..." style="padding:8px 12px;font-size:1em;border-radius:8px;border:1px solid #333;width:270px;background:#fff;color:#f08030;">
         </div>
     `;
     document.getElementById('type-filter').onchange = function () {
@@ -281,6 +263,8 @@ function showTable(pokemons) {
                 <span style="font-size: 0.8em;">&#8597;</span>
             </th>
             <th>Types</th>
+            <th>Gevangen</th>
+            <th>(kg)</th>
             <th>Meer info</th>
         </tr>
     `;
@@ -289,6 +273,7 @@ function showTable(pokemons) {
         const star = isFav ? "⭐️" : "☆";
         const typesHtml = pokemon.types.map(t =>
             `<span class="type-pill">${t.charAt(0).toUpperCase() + t.slice(1)}</span>`).join(" ");
+        const caughtCount = caughtPokemons[pokemon.name]?.count || 0;
         const row = document.createElement("tr");
         row.innerHTML = `
             <td>
@@ -303,6 +288,8 @@ function showTable(pokemons) {
                 </button>
             </td>
             <td>${typesHtml}</td>
+            <td>${caughtCount}</td>
+            <td>${pokemon.weight}</td>
             <td>
                 <button class="info-btn" data-name="${pokemon.name}">Meer info</button>
             </td>
@@ -312,6 +299,16 @@ function showTable(pokemons) {
     main.innerHTML = '';
     main.appendChild(table);
 
+    // -- Observer Target --
+    let oldTarget = document.getElementById('observer-target');
+    if (oldTarget) oldTarget.remove();
+    let target = document.createElement('div');
+    target.id = 'observer-target';
+    target.style.height = '1px';
+    main.appendChild(target);
+    setupObserver(); // <<<<<< HIER wordt observer telkens opnieuw geplaatst
+
+    // Favoriet toggelen
     document.querySelectorAll('.fav-btn').forEach(btn => {
         btn.onclick = function (e) {
             e.stopPropagation();
@@ -320,6 +317,7 @@ function showTable(pokemons) {
             renderUI();
         };
     });
+    // Sorteren
     document.getElementById('sort-name').onclick = function () {
         sortAscending = !sortAscending;
         showTable(
@@ -330,6 +328,7 @@ function showTable(pokemons) {
             )
         );
     };
+    // Evoluties tonen
     document.querySelectorAll('.show-evolutions').forEach(btn => {
         btn.addEventListener('click', async function () {
             document.querySelectorAll('.evo-row').forEach(e => e.remove());
@@ -342,7 +341,7 @@ function showTable(pokemons) {
             evoRow.classList.add('evo-row');
             evoRow.style.transition = "all 0.4s";
             let evoCell = evoRow.insertCell(0);
-            evoCell.colSpan = 5;
+            evoCell.colSpan = 7;
 
             let evoHtml = `<b>Evoluties van ${selectedPokemon.name.charAt(0).toUpperCase() + selectedPokemon.name.slice(1)}:</b>`;
             if (evolutions.length === 0) {
@@ -373,7 +372,7 @@ function showTable(pokemons) {
             });
         });
     });
-
+    // Info popups
     document.querySelectorAll('.info-btn').forEach(btn => {
         btn.onclick = async function (e) {
             e.stopPropagation();
@@ -465,6 +464,77 @@ async function showPokemonPopup(pokemonName) {
     popup.querySelector('.popup-close-btn').onclick = () => popup.remove();
     popup.onclick = (e) => { if (e.target === popup) popup.remove(); };
 }
+async function getEvolutions(evolutionChainUrl) {
+    const response = await fetch(evolutionChainUrl);
+    const data = await response.json();
+
+    let evolutions = [];
+    let node = data.chain;
+
+    while (node) {
+        evolutions.push(node.species.name);
+        if (node.evolves_to && node.evolves_to.length > 0) {
+            node = node.evolves_to[0];
+        } else {
+            break;
+        }
+    }
+
+    evolutions = evolutions.slice(1);
+
+    const evolutionsWithSprites = [];
+    for (let name of evolutions) {
+        const pokemonDataUrl = `https://pokeapi.co/api/v2/pokemon/${name}`;
+        const pokemonDataResponse = await fetch(pokemonDataUrl);
+        const pokemonData = await pokemonDataResponse.json();
+        evolutionsWithSprites.push({
+            name,
+            sprite: pokemonData.sprites.front_default,
+            url: `https://pokeapi.co/api/v2/pokemon-species/${pokemonData.id}/`
+        });
+    }
+
+    return evolutionsWithSprites;
+}
+
+// -------- Infinite scroll met Observer API -------------
+function disconnectObserver() {
+    if (observer) {
+        observer.disconnect();
+        observer = null;
+    }
+}
+function setupObserver() {
+    disconnectObserver();
+    if (currentTab !== 'all' && currentTab !== 'favorites') return;
+    const target = document.getElementById('observer-target');
+    if (!target) return;
+    observer = new IntersectionObserver(async (entries) => {
+        if (entries[0].isIntersecting && !loadingPokemons && !doneLoading) {
+            loadingPokemons = true;
+            await fetchAndAppendPokemons();
+            loadingPokemons = false;
+            filterAndShow();
+        }
+    }, {
+        root: null,
+        rootMargin: "0px",
+        threshold: 1.0,
+    });
+    observer.observe(target);
+}
+async function fetchAndAppendPokemons() {
+    if (doneLoading) return;
+    const newPokemons = await getBasisPokemon({ offset, limit: PAGE_SIZE });
+    if (newPokemons.length === 0) {
+        doneLoading = true;
+        return;
+    }
+    allPokemons = allPokemons.concat(newPokemons);
+    offset += PAGE_SIZE;
+}
+
+// -------- FILTER + SEARCH -----------
 function filterAndShow() {
     let base = currentTab === 'favorites'
         ? allPokemons.filter(p => isFavorite(p.name))
@@ -483,8 +553,10 @@ function filterAndShow() {
 // =========== INIT ===========
 getStandardTypes().then(types => {
     allTypes = types;
-    getBasisPokemon(10).then(basisPokemons => {
+    getBasisPokemon({ offset, limit: PAGE_SIZE }).then(basisPokemons => {
         allPokemons = basisPokemons;
+        allPokemonsLoaded = basisPokemons.map(p => p.name); // om duplicaten te voorkomen!
+        offset += PAGE_SIZE;
         currentPokemons = basisPokemons;
         renderUI();
     });
