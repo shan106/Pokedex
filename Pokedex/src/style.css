@@ -388,3 +388,24 @@ th {
   color: #ffe066;
 }
 
+#type-filter-bar {
+  width: 100%;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: center;
+}
+#type-filter {
+  min-width: 140px;
+  font-weight: 500;
+}
+.type-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 16px;
+  font-size: 0.9em;
+  background: #444;
+  color: #ffe066;
+  margin: 0 2px;
+}
+
+

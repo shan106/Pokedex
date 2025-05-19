@@ -7,6 +7,8 @@ let sortAscending = true;
 let allPokemons = [];
 let favoriteNames = loadFavorites();
 let currentTab = "all"; // 'all' of 'favorites'
+let allTypes = [];
+let selectedType = "all";
 
 // --- FAVORIETEN OPSLAG ---
 function saveFavorites() {
@@ -53,6 +55,38 @@ function updateTabStyles() {
     document.getElementById('tab-fav').classList.toggle('tab-active', currentTab === 'favorites');
 }
 
+// --- UI: Type Filter ---
+async function getStandardTypes() {
+    const response = await fetch("https://pokeapi.co/api/v2/type");
+    const data = await response.json();
+    // Shadow en unknown overslaan:
+    const exclude = ["shadow", "unknown"];
+    return data.results
+        .map(t => t.name)
+        .filter(t => !exclude.includes(t));
+}
+function showTypeFilter(types, onFilter) {
+    let filterDiv = document.getElementById('type-filter-bar');
+    if (!filterDiv) {
+        filterDiv = document.createElement('div');
+        filterDiv.id = 'type-filter-bar';
+        filterDiv.style.display = 'flex';
+        filterDiv.style.justifyContent = 'center';
+        filterDiv.style.marginBottom = '20px';
+        filterDiv.innerHTML = `
+            <select id="type-filter" style="padding: 8px 16px; border-radius: 8px; font-size: 1em;">
+                <option value="all">All types</option>
+                ${types.map(t => `<option value="${t}">${t.charAt(0).toUpperCase() + t.slice(1)}</option>`).join("")}
+            </select>
+        `;
+        const app = document.getElementById('app');
+        app.insertBefore(filterDiv, app.children[1] || null);
+    }
+    document.getElementById('type-filter').onchange = function () {
+        onFilter(this.value);
+    };
+}
+
 // --- UI: Zoekbalk ---
 function ensureSearchBar(onSearch) {
     const app = document.querySelector('#app');
@@ -63,19 +97,18 @@ function ensureSearchBar(onSearch) {
         searchDiv.innerHTML = `
             <input type="text" id="search-input" placeholder="Zoek een Pokémon...">
         `;
-        app.insertBefore(searchDiv, app.children[1] || null);
+        app.insertBefore(searchDiv, app.children[2] || null);
     }
-    // Voeg maar één event toe
     let input = document.getElementById('search-input');
     if (!input._hasListener) {
         input.addEventListener('input', e => {
-            const searchValue = e.target.value.trim().toLowerCase();
-            onSearch(searchValue);
+            onSearch(e.target.value.trim().toLowerCase());
         });
         input._hasListener = true;
     }
 }
 
+// --- Data ophalen ---
 async function getBasisPokemon(maxPokemons = 10) {
     const response = await fetch(API_URL);
     const data = await response.json();
@@ -97,7 +130,8 @@ async function getBasisPokemon(maxPokemons = 10) {
                 name: speciesData.name,
                 url: speciesUrl,
                 sprite: pokemonData.sprites.front_default,
-                evolution_chain_url: speciesData.evolution_chain.url
+                evolution_chain_url: speciesData.evolution_chain.url,
+                types: pokemonData.types.map(t => t.type.name)
             });
         }
     }
@@ -151,6 +185,7 @@ function showTable(pokemons) {
                 Naam (klikbaar)
                 <span style="font-size: 0.8em;">&#8597;</span>
             </th>
+            <th>Types</th>
             <th>Meer info</th>
         </tr>
     `;
@@ -158,6 +193,8 @@ function showTable(pokemons) {
     pokemons.forEach((pokemon, index) => {
         const isFav = isFavorite(pokemon.name);
         const star = isFav ? "⭐️" : "☆";
+        const typesHtml = pokemon.types.map(t =>
+            `<span class="type-pill">${t.charAt(0).toUpperCase() + t.slice(1)}</span>`).join(" ");
         const row = document.createElement("tr");
         row.innerHTML = `
             <td>
@@ -171,6 +208,7 @@ function showTable(pokemons) {
                     ${pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1)}
                 </button>
             </td>
+            <td>${typesHtml}</td>
             <td>
                 <button class="info-btn" data-name="${pokemon.name}">Meer info</button>
             </td>
@@ -215,7 +253,7 @@ function showTable(pokemons) {
             evoRow.classList.add('evo-row');
             evoRow.style.transition = "all 0.4s";
             let evoCell = evoRow.insertCell(0);
-            evoCell.colSpan = 4;
+            evoCell.colSpan = 5;
 
             let evoHtml = `<b>Evoluties van ${selectedPokemon.name.charAt(0).toUpperCase() + selectedPokemon.name.slice(1)}:</b>`;
             if (evolutions.length === 0) {
@@ -258,15 +296,12 @@ function showTable(pokemons) {
     });
 }
 
-
 // ------- POP-UP FUNCTION -------
 async function showPokemonPopup(pokemonName) {
-    // Haal detaildata op van de pokemon endpoint
     const dataUrl = `https://pokeapi.co/api/v2/pokemon/${pokemonName}`;
     const resp = await fetch(dataUrl);
     const data = await resp.json();
 
-    // Parse
     const naam = data.name.charAt(0).toUpperCase() + data.name.slice(1);
     const lengte = data.height / 10 + " m";
     const gewicht = data.weight / 10 + " kg";
@@ -274,7 +309,6 @@ async function showPokemonPopup(pokemonName) {
     const abilities = data.abilities.map(a => a.ability.name).join(', ');
     const stats = data.stats.map(s => `${s.stat.name}: ${s.base_stat}`).join('<br>');
 
-    // Bouw popup
     let popup = document.createElement('div');
     popup.className = "pokemon-popup-overlay";
     popup.innerHTML = `
@@ -293,49 +327,56 @@ async function showPokemonPopup(pokemonName) {
     `;
     document.body.appendChild(popup);
 
-    // Sluiten met kruisje of buiten popup klikken
     popup.querySelector('.popup-close-btn').onclick = () => popup.remove();
     popup.onclick = (e) => { if (e.target === popup) popup.remove(); };
 }
 
-// ----- Refreshen van tabs -----
+// --- Filter logica (tabs, zoeken, type-filter) ---
+function filterAndShow() {
+    let base = currentTab === 'favorites'
+        ? allPokemons.filter(p => isFavorite(p.name))
+        : allPokemons;
+
+    // Type-filter
+    let filtered = (selectedType === "all")
+        ? base
+        : base.filter(p => p.types.includes(selectedType));
+
+    // Zoek-filter
+    const searchValue = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
+    if (searchValue) {
+        filtered = filtered.filter(p => p.name.toLowerCase().includes(searchValue));
+    }
+    currentPokemons = filtered;
+    showTable(filtered);
+}
+
 function refreshCurrentTab() {
     updateTabStyles();
-    if (currentTab === 'all') {
-        currentPokemons = allPokemons;
-        const searchValue = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
-        let filtered = currentPokemons.filter(p => p.name.toLowerCase().includes(searchValue));
-        showTable(filtered);
-    } else {
-        // Favorieten tab
-        const favPokemons = allPokemons.filter(p => isFavorite(p.name));
-        currentPokemons = favPokemons;
-        const searchValue = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
-        let filtered = currentPokemons.filter(p => p.name.toLowerCase().includes(searchValue));
-        showTable(filtered);
-    }
+    filterAndShow();
 }
 
 // --- INIT ---
-getBasisPokemon(10).then(basisPokemons => {
-    allPokemons = basisPokemons;
-    currentPokemons = basisPokemons;
-
-    // Tabs
-    showTabs(tab => {
-        currentTab = tab;
-        refreshCurrentTab();
+getStandardTypes().then(types => {
+    allTypes = types;
+    showTypeFilter(allTypes, (type) => {
+        selectedType = type;
+        filterAndShow();
     });
 
-    // Zoekbalk
-    ensureSearchBar((searchValue) => {
-        let base = currentTab === 'favorites'
-            ? allPokemons.filter(p => isFavorite(p.name))
-            : allPokemons;
-        let filtered = base.filter(p => p.name.toLowerCase().includes(searchValue));
-        currentPokemons = filtered;
-        showTable(filtered);
-    });
+    getBasisPokemon(10).then(basisPokemons => {
+        allPokemons = basisPokemons;
+        currentPokemons = basisPokemons;
 
-    showTable(currentPokemons);
+        showTabs(tab => {
+            currentTab = tab;
+            filterAndShow();
+        });
+
+        ensureSearchBar(() => {
+            filterAndShow();
+        });
+
+        filterAndShow();
+    });
 });
