@@ -37,29 +37,24 @@ function applyTheme(themeKey) {
     document.documentElement.style.setProperty('--main-color', theme.color);
     document.documentElement.style.setProperty('--bg-color', theme.bg);
     document.documentElement.style.setProperty('--accent-color', theme.accent);
+
     // Logo
     let logoDiv = document.getElementById('theme-logo');
     if (!logoDiv) {
         logoDiv = document.createElement('div');
         logoDiv.id = "theme-logo";
-        logoDiv.style.display = "flex";
-        logoDiv.style.justifyContent = "center";
-        logoDiv.style.margin = "0 auto 16px auto";
         const app = document.getElementById('app');
         app.prepend(logoDiv);
     }
-    logoDiv.innerHTML = `<img src="${theme.logo}" alt="${theme.name}" style="width:76px;height:76px;background:#fff;border-radius:50%;box-shadow:0 2px 10px #0002;">`;
+    logoDiv.innerHTML = `<img src="${theme.logo}" alt="${theme.name}" class="logo-img">`;
 }
 function showThemeSelector() {
     let selector = document.getElementById('theme-selector-bar');
     if (!selector) {
         selector = document.createElement('div');
         selector.id = "theme-selector-bar";
-        selector.style.display = "flex";
-        selector.style.justifyContent = "center";
-        selector.style.marginBottom = "12px";
         selector.innerHTML = `
-            <select id="theme-select" style="font-size:1.1em;padding:0.5em 2em;border-radius:1em;border:1.5px solid var(--main-color);background:#fff;">
+            <select id="theme-select" class="theme-select">
                 <option value="charmander">Charmander</option>
                 <option value="bulbasaur">Bulbasaur</option>
                 <option value="squirtle">Squirtle</option>
@@ -228,14 +223,14 @@ function showTabs(onTabChange) {
 }
 function showTypeFilter(types, onFilter) {
     document.getElementById('filter-and-search').innerHTML = `
-        <div id="type-filter-bar" style="display:flex;justify-content:center;margin-bottom:16px;">
-            <select id="type-filter" style="padding:8px 16px;border-radius:8px;font-size:1em;">
+        <div id="type-filter-bar">
+            <select id="type-filter" class="type-filter">
                 <option value="all">All types</option>
                 ${types.map(t => `<option value="${t}">${t.charAt(0).toUpperCase() + t.slice(1)}</option>`).join("")}
             </select>
         </div>
-        <div id="search-bar" style="width:100%;margin-bottom:24px;display:flex;justify-content:center;">
-            <input type="text" id="search-input" placeholder="Zoek een Pokémon..." style="padding:8px 12px;font-size:1em;border-radius:8px;border:1px solid #333;width:270px;background:#fff;color:#f08030;">
+        <div id="search-bar">
+            <input type="text" id="search-input" placeholder="Zoek een Pokémon..." class="search-input">
         </div>
     `;
     document.getElementById('type-filter').onchange = function () {
@@ -258,9 +253,9 @@ function showTable(pokemons) {
         <tr>
             <th>⭐️</th>
             <th>Foto</th>
-            <th id="sort-name" style="cursor:pointer;">
+            <th id="sort-name" class="sortable-header">
                 Naam (klikbaar)
-                <span style="font-size: 0.8em;">&#8597;</span>
+                <span class="sort-arrow">&#8597;</span>
             </th>
             <th>Types</th>
             <th>Gevangen</th>
@@ -277,9 +272,7 @@ function showTable(pokemons) {
         const row = document.createElement("tr");
         row.innerHTML = `
             <td>
-                <button class="fav-btn" data-name="${pokemon.name}" title="Voeg toe aan favorieten" style="background:none; border:none; cursor:pointer; font-size: 1.2em;">
-                    ${star}
-                </button>
+                <button class="fav-btn" data-name="${pokemon.name}" title="Voeg toe aan favorieten">${star}</button>
             </td>
             <td><img src="${pokemon.sprite}" alt="${pokemon.name}" width="60"/></td>
             <td>
@@ -304,11 +297,9 @@ function showTable(pokemons) {
     if (oldTarget) oldTarget.remove();
     let target = document.createElement('div');
     target.id = 'observer-target';
-    target.style.height = '1px';
     main.appendChild(target);
-    setupObserver(); // <<<<<< HIER wordt observer telkens opnieuw geplaatst
+    setupObserver();
 
-    // Favoriet toggelen
     document.querySelectorAll('.fav-btn').forEach(btn => {
         btn.onclick = function (e) {
             e.stopPropagation();
@@ -317,7 +308,6 @@ function showTable(pokemons) {
             renderUI();
         };
     });
-    // Sorteren
     document.getElementById('sort-name').onclick = function () {
         sortAscending = !sortAscending;
         showTable(
@@ -328,7 +318,6 @@ function showTable(pokemons) {
             )
         );
     };
-    // Evoluties tonen
     document.querySelectorAll('.show-evolutions').forEach(btn => {
         btn.addEventListener('click', async function () {
             document.querySelectorAll('.evo-row').forEach(e => e.remove());
@@ -339,13 +328,12 @@ function showTable(pokemons) {
             const currentRow = table.rows[parseInt(idx) + 1];
             const evoRow = table.insertRow(currentRow.rowIndex + 1);
             evoRow.classList.add('evo-row');
-            evoRow.style.transition = "all 0.4s";
             let evoCell = evoRow.insertCell(0);
             evoCell.colSpan = 7;
 
             let evoHtml = `<b>Evoluties van ${selectedPokemon.name.charAt(0).toUpperCase() + selectedPokemon.name.slice(1)}:</b>`;
             if (evolutions.length === 0) {
-                evoHtml += `<br><span style="color:gray;">Deze Pokémon heeft geen evoluties.</span>`;
+                evoHtml += `<br><span class="no-evo">Deze Pokémon heeft geen evoluties.</span>`;
             } else {
                 evoHtml += `<div class="evolution-list">`;
                 evolutions.forEach(evo => {
@@ -372,7 +360,6 @@ function showTable(pokemons) {
             });
         });
     });
-    // Info popups
     document.querySelectorAll('.info-btn').forEach(btn => {
         btn.onclick = async function (e) {
             e.stopPropagation();
@@ -385,12 +372,12 @@ function showCatchTab() {
     const main = document.getElementById('main-content');
     main.innerHTML = '';
     let div = document.createElement('div');
-    div.style.textAlign = 'center';
+    div.className = 'catch-container';
     div.innerHTML = `
-        <h2 style="color:var(--main-color);">Pokémon vangen</h2>
-        <button id="catch-btn" style="padding:0.8em 2em; border-radius:1em; background:var(--main-color); color:#fff; border:none; font-size:1.2em; font-weight:600; cursor:pointer;">Vang een Pokémon!</button>
-        <div id="catch-message" style="margin:16px 0; font-size:1.1em; font-weight:500;"></div>
-        <h3 style="margin-top:36px;">Gevangen Pokémon</h3>
+        <h2 class="catch-header">Pokémon vangen</h2>
+        <button id="catch-btn" class="catch-btn">Vang een Pokémon!</button>
+        <div id="catch-message" class="catch-message"></div>
+        <h3 class="caught-title">Gevangen Pokémon</h3>
         <div id="caught-table-container"></div>
     `;
     main.appendChild(div);
@@ -399,12 +386,12 @@ function showCatchTab() {
         let caught = catchRandomPokemon();
         let msgDiv = document.getElementById('catch-message');
         if (!caught) {
-            msgDiv.innerHTML = `<span style="color:#f55;">Helaas, de Pokémon is ontsnapt!</span>`;
+            msgDiv.innerHTML = `<span class="catch-fail">Helaas, de Pokémon is ontsnapt!</span>`;
             msgDiv.classList.remove('catch-success');
             msgDiv.classList.add('catch-fail');
         } else {
             addCaught(caught);
-            msgDiv.innerHTML = `<span style="color:#6fcf97;">Gefeliciteerd! Je hebt <b>${caught.name.charAt(0).toUpperCase() + caught.name.slice(1)}</b> gevangen!</span>`;
+            msgDiv.innerHTML = `<span class="catch-success">Gefeliciteerd! Je hebt <b>${caught.name.charAt(0).toUpperCase() + caught.name.slice(1)}</b> gevangen!</span>`;
             msgDiv.classList.remove('catch-fail');
             msgDiv.classList.add('catch-success');
             renderCaughtTable();
@@ -416,7 +403,7 @@ function renderCaughtTable() {
     let c = getCaughtArray();
     let html = '';
     if (c.length === 0) {
-        html = `<p style="color:#888;">Nog geen Pokémon gevangen...</p>`;
+        html = `<p class="no-catch">Nog geen Pokémon gevangen...</p>`;
     } else {
         html = `<table class="caught-table"><tr>
             <th>Foto</th><th>Naam</th><th>Aantal gevangen</th></tr>`;
@@ -450,12 +437,12 @@ async function showPokemonPopup(pokemonName) {
         <button class="popup-close-btn" title="Sluiten">&times;</button>
         <div class="popup-content">
             <h2>${naam}</h2>
-            <img src="${data.sprites.front_default}" alt="${naam}" width="100" style="background:#fff;border-radius:12px;margin-bottom:15px;"/>
+            <img src="${data.sprites.front_default}" alt="${naam}" width="100" class="popup-img"/>
             <div><strong>Lengte:</strong> ${lengte}</div>
             <div><strong>Gewicht:</strong> ${gewicht}</div>
             <div><strong>Type:</strong> ${types}</div>
             <div><strong>Abilities:</strong> ${abilities}</div>
-            <div style="margin-top: 10px;"><strong>Stats:</strong><br>${stats}</div>
+            <div class="popup-stats"><strong>Stats:</strong><br>${stats}</div>
         </div>
       </div>
     `;
