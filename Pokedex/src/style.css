@@ -515,4 +515,14 @@ button.fav-btn:hover,
 .caught-title {
   margin-top: 36px;
 }
+.search-error {
+  color: #f55;
+  font-size: 0.97em;
+  padding-left: 8px;
+  vertical-align: middle;
+}
+.input-error {
+  border-color: #f55 !important;
+  background: #ffecec !important;
+}
 

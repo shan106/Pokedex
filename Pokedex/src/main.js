@@ -77,7 +77,7 @@ const API_URL = "https://pokeapi.co/api/v2/pokedex/1/";
 let currentPokemons = [];
 let sortAscending = true;
 let allPokemons = [];
-let allPokemonsLoaded = []; // om duplicaten te vermijden
+let allPokemonsLoaded = [];
 let favoriteNames = loadFavorites();
 let currentTab = "all";
 let allTypes = [];
@@ -85,7 +85,6 @@ let selectedType = "all";
 let caughtPokemons = loadCaughtPokemons();
 let observer = null;
 
-// Infinite scroll variabelen
 let offset = 0;
 const PAGE_SIZE = 25;
 let loadingPokemons = false;
@@ -221,6 +220,8 @@ function showTabs(onTabChange) {
     document.getElementById('tab-fav').onclick = () => onTabChange('favorites');
     document.getElementById('tab-catch').onclick = () => onTabChange('catch');
 }
+
+// ---- FORMULIER met VALIDATIE ZOEK ----
 function showTypeFilter(types, onFilter) {
     document.getElementById('filter-and-search').innerHTML = `
         <div id="type-filter-bar">
@@ -229,23 +230,58 @@ function showTypeFilter(types, onFilter) {
                 ${types.map(t => `<option value="${t}">${t.charAt(0).toUpperCase() + t.slice(1)}</option>`).join("")}
             </select>
         </div>
-        <div id="search-bar">
-            <input type="text" id="search-input" placeholder="Zoek een Pokémon..." class="search-input">
-        </div>
+        <form id="search-form">
+            <div id="search-bar">
+                <input type="text" id="search-input" placeholder="Zoek een Pokémon..." class="search-input" autocomplete="off">
+                <span id="search-error" class="search-error"></span>
+            </div>
+        </form>
     `;
     document.getElementById('type-filter').onchange = function () {
         onFilter(this.value);
     };
 }
+
 function ensureSearchBar(onSearch) {
-    let input = document.getElementById('search-input');
+    const input = document.getElementById('search-input');
+    const form = document.getElementById('search-form');
+    const errorEl = document.getElementById('search-error');
+
+    function validateAndSearch(e) {
+        const value = input.value.trim();
+        // Alleen letters, spaties, 2-20 tekens
+        const regex = /^[a-zA-Z\s]{2,20}$/;
+        if (value.length === 0) {
+            errorEl.textContent = '';
+            input.classList.remove('input-error');
+            onSearch('');
+            return;
+        }
+        if (!regex.test(value)) {
+            errorEl.textContent = 'Alleen letters, minimaal 2 tekens!';
+            input.classList.add('input-error');
+        } else {
+            errorEl.textContent = '';
+            input.classList.remove('input-error');
+            onSearch(value.toLowerCase());
+        }
+    }
+
     if (!input._hasListener) {
-        input.addEventListener('input', e => {
-            onSearch(e.target.value.trim().toLowerCase());
-        });
+        input.addEventListener('input', validateAndSearch);
         input._hasListener = true;
     }
+    if (form && !form._hasListener) {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            validateAndSearch();
+        });
+        form._hasListener = true;
+    }
 }
+
+// Rest van de code: alles zoals je gewend bent (met infinite scroll, table, catch, popup...)
+
 function showTable(pokemons) {
     const main = document.getElementById('main-content');
     let table = document.createElement("table");
@@ -292,7 +328,6 @@ function showTable(pokemons) {
     main.innerHTML = '';
     main.appendChild(table);
 
-    // -- Observer Target --
     let oldTarget = document.getElementById('observer-target');
     if (oldTarget) oldTarget.remove();
     let target = document.createElement('div');
@@ -368,6 +403,7 @@ function showTable(pokemons) {
         };
     });
 }
+
 function showCatchTab() {
     const main = document.getElementById('main-content');
     main.innerHTML = '';
@@ -531,6 +567,13 @@ function filterAndShow() {
         : base.filter(p => p.types.includes(selectedType));
     const searchValue = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
     if (searchValue) {
+        // Als validatie faalt, filter niet
+        const regex = /^[a-zA-Z\s]{2,20}$/;
+        if (!regex.test(searchValue)) {
+            currentPokemons = [];
+            showTable([]);
+            return;
+        }
         filtered = filtered.filter(p => p.name.toLowerCase().includes(searchValue));
     }
     currentPokemons = filtered;
@@ -542,7 +585,7 @@ getStandardTypes().then(types => {
     allTypes = types;
     getBasisPokemon({ offset, limit: PAGE_SIZE }).then(basisPokemons => {
         allPokemons = basisPokemons;
-        allPokemonsLoaded = basisPokemons.map(p => p.name); // om duplicaten te voorkomen!
+        allPokemonsLoaded = basisPokemons.map(p => p.name);
         offset += PAGE_SIZE;
         currentPokemons = basisPokemons;
         renderUI();
